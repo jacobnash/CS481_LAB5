@@ -13,15 +13,6 @@ all: $(EXECUTABLES)
 clean:
 	rm -f *.o $(EXECUTABLES) *~
 test: all
-	./myls -l
 	#
+	./myls -r test
 	#
-	#
-	#
-	#
-	./myls -l test
-	#
-	#
-	#
-	#
-	./myls -l test makefile myls

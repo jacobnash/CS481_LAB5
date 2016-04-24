@@ -10,7 +10,7 @@
 #include <time.h>
 
 #define mmalloc(type, count) ( type * ) malloc ((count) * sizeof(type))
-#define isFile_1 0x8
+
 struct flags {
     int c;
     int d;
@@ -96,7 +96,7 @@ void my_ls(char** argv)//assume that i only pass dirs
                 fprintf(stdout, "%s", dirent_p->d_name);
                 if (flag.c)
                 {
-                    if ( S_ISDIR(stats->st_mode))
+                    if (DT_DIR == dirent_p->d_type)
                         fprintf(stdout,"/");
                     else if (S_ISLNK(stats->st_mode)) 
                         fprintf(stdout, "@");
@@ -111,10 +111,39 @@ void my_ls(char** argv)//assume that i only pass dirs
                 fprintf(stdout, "\n");
             }
         }
-            temp++;
+        closedir(dir_p);
+        temp++;
     }
+    temp = argv;
 
+    if(flag.r)
+    {
+        char** recursive = mmalloc(char*,2); 
+        while(*temp)
+        {
+            if ((dir_p = opendir(*temp)) != NULL)
+            {
+                while((dirent_p = readdir(dir_p)) != NULL)
+                {
+                    if(DT_DIR == dirent_p->d_type)
+                    {
+                        if(!(strcmp(".",dirent_p->d_name)==0 || strcmp("..",dirent_p->d_name) == 0 ))
+                        { 
+                            recursive[1] = NULL;
+                            char* tempstring;
+                            asprintf(&tempstring,"%s/%s",*temp, dirent_p->d_name);
+                            recursive[0] = tempstring;
+                            my_ls(recursive);
+                        }
+                    }                    
+                }
+            }
+            ++temp;  
+        }
+        free(recursive);
+    }
 }
+
 
 int main(int argc, char** argv)
 {
@@ -136,7 +165,7 @@ int main(int argc, char** argv)
         {"follow-symlinks", optional_argument, &flag.f, 'f'},
         {"recursive",       optional_argument, &flag.r, 'r'},
         {"human-readable",  optional_argument, &flag.h, 'h'},
-        {0,                 0,           0,               0}
+        {0,                  0,                0,        0 }
     };
 
     while((option = getopt_long(argc, argv, "cdlfrh", longopt, &index)) != -1){
@@ -149,11 +178,9 @@ int main(int argc, char** argv)
                 break;
             case 'l':
                 ++flag.l;
-                fprintf(stderr, "long listing\n");
                 break;
             case 'f':
                 ++flag.f;
-                fprintf(stderr, "follow links\n");
                 break;
             case 'h':
                 ++flag.h;
@@ -161,20 +188,14 @@ int main(int argc, char** argv)
                 break;
             case 'r':
                 ++flag.r;
-                fprintf(stderr, "recursive\n");
                 break;
             case '?':
                 usage();
-            default :
-                fprintf(stderr, "ls");
         }
     }
     char **temp; 
     int j = 1;
-    if (argc == option)
-    {
-        ++j;
-    }
+    if (argc == option)  ++j;
     temp = mmalloc(char* , (argc - optind + j));
     int i = 0;
     if (argc == optind)
@@ -214,7 +235,7 @@ int main(int argc, char** argv)
     temp[i] = NULL; 
 
     my_ls(temp);
-
-    return 0;
+    free(temp);
+    exit(EXIT_SUCCESS);
 }
 
