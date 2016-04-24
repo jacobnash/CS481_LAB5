@@ -82,7 +82,12 @@ void my_ls(char** argv)//assume that i only pass dirs
                     fprintf(stdout, "%s ", getpwuid(stats->st_uid)->pw_name);
                     fprintf(stdout, "%s ", getgrgid(stats->st_gid)->gr_name);
                     fprintf(stdout, "%llu ", stats->st_size);
-                    fprintf(stdout, "%lu ", stats->st_ctimespec.tv_sec);
+                    fprintf(stdout, "%lu ", stats->st_mtimespec.tv_sec);
+                    /*
+                     *
+                     * time part here
+                     * 
+                     */ 
                 }
                 if(flag.d)
                 {
@@ -98,10 +103,15 @@ void my_ls(char** argv)//assume that i only pass dirs
                     else if (stats->st_mode & S_IXUSR) 
                         fprintf(stdout, "*");
                 }
+                if(flag.f)
+                {
+                    if(S_ISLNK(stats->st_mode))
+                        fprintf(stdout, " -> %s", realpath(dirent_p->d_name, NULL));
+                }
                 fprintf(stdout, "\n");
             }
-            temp++;
         }
+            temp++;
     }
 
 }
