@@ -8,7 +8,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
-
+#include <math.h>
 #define mmalloc(type, count) ( type * ) malloc ((count) * sizeof(type))
 
 struct flags {
@@ -18,12 +18,40 @@ struct flags {
     int f;
     int r;
     int h;
-}flag;
+} flag;
 int is_regular_file(const char *path)
 {
     struct stat path_stat;
     stat(path, &path_stat);
     return S_ISREG(path_stat.st_mode);
+}
+char* convert(long long unsigned mem)
+{
+
+    char* result = "B"; 
+    float i_r = 0;
+    if(flag.h){    
+        if (mem > 0x80000000)
+        {
+            i_r = (float)mem/0x80000000;
+            result = "G";
+        }
+        else if (mem > 0x100000)
+        {
+            i_r = (float)mem/0x100000;
+            result = "M";
+        }
+        else if (mem > 0x800)
+        {
+            i_r = (float)mem/0x800;
+            result = "K";
+        }
+        i_r = floorf(i_r * 100) / 100;
+        asprintf(&result,"%2.1f%s",i_r, result);
+    }
+    else
+        asprintf(&result,"%llu",mem);
+    return result;
 }
 void usage()
 {
@@ -69,7 +97,7 @@ void my_ls(char** argv)//assume that i only pass dirs
                 if (flag.l)
                 {
                     fprintf(stdout, "%llu ", dirent_p->d_ino);//inode numbers
-                    fprintf(stdout, (S_ISDIR(stats->st_mode)) ? "d" : "-");
+                    fprintf(stdout, (S_ISDIR(stats->st_mode) ) ? "d" : "-");
                     fprintf(stdout, (stats->st_mode & S_IRUSR) ? "r" : "-");
                     fprintf(stdout, (stats->st_mode & S_IWUSR) ? "w" : "-");
                     fprintf(stdout, (stats->st_mode & S_IXUSR) ? "x" : "-");
@@ -81,17 +109,19 @@ void my_ls(char** argv)//assume that i only pass dirs
                     fprintf(stdout, (stats->st_mode & S_IXOTH) ? "x " : "- ");
                     fprintf(stdout, "%s ", getpwuid(stats->st_uid)->pw_name);
                     fprintf(stdout, "%s ", getgrgid(stats->st_gid)->gr_name);
-                    fprintf(stdout, "%llu ", stats->st_size);
-                    fprintf(stdout, "%lu ", stats->st_mtimespec.tv_sec);
-                    /*
-                     *
-                     * time part here
-                     * 
-                     */ 
+                    fprintf(stdout, "%s ", convert(stats->st_size));
+                    char buf[20];
+                    time_t t_now;
+                    struct tm *l_time;
+                    time(&t_now);
+                    int year = localtime(&t_now)->tm_year; 
+                    l_time = localtime(&stats->st_mtime);
+                    (l_time->tm_year == year)? strftime(buf, 20, "%b %e %R", l_time) : strftime(buf, 20, "%b %e %Y", l_time);
+                    printf("%s ", buf);
                 }
                 if(flag.d)
                 {
-                    fprintf(stdout, "%llu ",(stats->st_blocks));
+                    fprintf(stdout, "%s ",convert(stats->st_blocks * stats->st_blksize));
                 }
                 fprintf(stdout, "%s", dirent_p->d_name);
                 if (flag.c)
@@ -180,11 +210,11 @@ int main(int argc, char** argv)
                 ++flag.l;
                 break;
             case 'f':
+                //goto to dir
                 ++flag.f;
                 break;
             case 'h':
                 ++flag.h;
-                fprintf(stderr, "human readble\n");
                 break;
             case 'r':
                 ++flag.r;
@@ -208,22 +238,24 @@ int main(int argc, char** argv)
         //check for sym link or executible.
         if(is_regular_file(argv[optind]))
         {
-            lstat(argv[optind], stats);
-            if(flag.d)
-            {
-                fprintf(stdout, "%llu ",(stats->st_blocks));
-            }
-            fprintf(stdout, "%s", argv[optind]);
-            if (flag.c)
-            {
-                if ( S_ISDIR(stats->st_mode))
-                    fprintf(stdout,"/");
-                else if (S_ISLNK(stats->st_mode)) 
-                    fprintf(stdout, "@");
-                else if (stats->st_mode & S_IXUSR) 
-                    fprintf(stdout, "*");
-            }
-            fprintf(stdout, "\n");
+            /*
+               lstat(argv[optind], stats);
+               if(flag.d)
+               {
+               fprintf(stdout, "%llu ",(stats->st_blocks));
+               }
+               fprintf(stdout, "%s", argv[optind]);
+               if (flag.c)
+               {
+               if ( S_ISDIR(stats->st_mode))
+               fprintf(stdout,"/");
+               else if (S_ISLNK(stats->st_mode)) 
+               fprintf(stdout, "@");
+               else if (stats->st_mode & S_IXUSR) 
+               fprintf(stdout, "*");
+               }
+               fprintf(stdout, "\n");a
+               */
             ++optind;
 
         }
@@ -233,9 +265,7 @@ int main(int argc, char** argv)
         }
     }
     temp[i] = NULL; 
-
     my_ls(temp);
     free(temp);
     exit(EXIT_SUCCESS);
 }
-
