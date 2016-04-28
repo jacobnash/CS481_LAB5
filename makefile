@@ -14,7 +14,7 @@ clean:
 	rm -f *.o $(EXECUTABLES) *~
 test: all
 	#
-	./myls -dhl
+	./myls -d 40
 ##
 	ls -s
 	#

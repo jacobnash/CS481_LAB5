@@ -25,9 +25,8 @@ int is_regular_file(const char *path)
     stat(path, &path_stat);
     return S_ISREG(path_stat.st_mode);
 }
-char* convert(long long unsigned mem)
+void convert(long long unsigned mem)
 {
-
     char* result = "B"; 
     float i_r = 0;
     if(flag.h){    
@@ -35,23 +34,28 @@ char* convert(long long unsigned mem)
         {
             i_r = (float)mem/0x80000000;
             result = "G";
+            i_r = floorf(i_r * 100) / 100;
+            fprintf(stdout, "%3.1f%s ",i_r, result);
         }
         else if (mem > 0x100000)
         {
             i_r = (float)mem/0x100000;
             result = "M";
+            i_r = floorf(i_r * 100) / 100;
+            fprintf(stdout, "%3.1f%s ",i_r, result);
         }
         else if (mem > 0x800)
         {
             i_r = (float)mem/0x800;
             result = "K";
+            i_r = floorf(i_r * 100) / 100;
+            fprintf(stdout, "%3.1f%s ",i_r, result);
         }
-        i_r = floorf(i_r * 100) / 100;
-        asprintf(&result,"%2.1f%s",i_r, result);
+        else
+            fprintf(stdout, "%llu%s ",mem, result);
     }
     else
-        asprintf(&result,"%llu",mem);
-    return result;
+        fprintf(stdout, "%llu", mem);
 }
 void usage()
 {
@@ -61,8 +65,6 @@ void usage()
     fprintf(stderr, "\n\t-l, –long-listing: use detailed (long) listing format, printing in order:");
     fprintf(stderr, "\n\t\t– inode number");
     fprintf(stderr, "\n\t\t– mode (using the same “drwxrwxrwx” format of the standard ls command. – owner (you must convert the uid to the proper user name)");
-    fprintf(stderr, "\n\t\t– group (you must convert the gid to the proper group name)");
-    fprintf(stderr, "\n\t\t– file size (in bytes unless otherwise specified)");
     fprintf(stderr, "\n\t\t– file modification time");
     fprintf(stderr, "\n\t-f, –follow-symlinks: follow the targets of symbolic links 1");
     fprintf(stderr, "\n\t-h, –human-readable: if long listing format is specified, print file sizes in a human readable format.");
@@ -80,11 +82,13 @@ void my_ls(char** argv)//assume that i only pass dirs
     struct stat   *nlstats;
     stats = mmalloc(struct stat, 1);
     nlstats = mmalloc(struct stat, 1);
+    fprintf(stderr, "argv:%s:\n", argv[0]);
 
     //print out all the files
     char **temp = argv;
     //check if it is a directory
     temp = argv;
+
     if(strcmp(".",*temp)!=0) 
         fprintf(stdout, "%s:\n", *temp);
     while(*temp)
@@ -109,7 +113,7 @@ void my_ls(char** argv)//assume that i only pass dirs
                     fprintf(stdout, (stats->st_mode & S_IXOTH) ? "x " : "- ");
                     fprintf(stdout, "%s ", getpwuid(stats->st_uid)->pw_name);
                     fprintf(stdout, "%s ", getgrgid(stats->st_gid)->gr_name);
-                    fprintf(stdout, "%s ", convert(stats->st_size));
+                    convert(stats->st_size);
                     char buf[20];
                     time_t t_now;
                     struct tm *l_time;
@@ -121,7 +125,7 @@ void my_ls(char** argv)//assume that i only pass dirs
                 }
                 if(flag.d)
                 {
-                    fprintf(stdout, "%s ",convert(stats->st_blocks * stats->st_blksize));
+                    convert(( ((stats->st_size / flag.d) + ((stats->st_size % flag.d) ? 1 : 0)) * flag.d));
                 }
                 fprintf(stdout, "%s", dirent_p->d_name);
                 if (flag.c)
@@ -189,22 +193,22 @@ int main(int argc, char** argv)
     flag.h = 0;
 
     struct option longopt[] = {
-        {"classify",        optional_argument, &flag.c, 'c'},
-        {"disk-usage",      optional_argument, &flag.d, 'd'},
-        {"long-listing",    optional_argument, &flag.l, 'l'},
-        {"follow-symlinks", optional_argument, &flag.f, 'f'},
-        {"recursive",       optional_argument, &flag.r, 'r'},
-        {"human-readable",  optional_argument, &flag.h, 'h'},
+        {"classify",        no_argument, &flag.c, 'c'},
+        {"disk-usage",      required_argument, &flag.d, 'd'},
+        {"long-listing",    no_argument, &flag.l, 'l'},
+        {"follow-symlinks", no_argument, &flag.f, 'f'},
+        {"recursive",       no_argument, &flag.r, 'r'},
+        {"human-readable",  no_argument, &flag.h, 'h'},
         {0,                  0,                0,        0 }
     };
 
-    while((option = getopt_long(argc, argv, "cdlfrh", longopt, &index)) != -1){
+    while((option = getopt_long(argc, argv, "cd:lfrh", longopt, &index)) != -1){
         switch(option){
             case 'c':
                 ++flag.c;
                 break;
             case 'd':
-                ++flag.d;
+                flag.d =atoi(optarg);
                 break;
             case 'l':
                 ++flag.l;
@@ -228,41 +232,35 @@ int main(int argc, char** argv)
     if (argc == option)  ++j;
     temp = mmalloc(char* , (argc - optind + j));
     int i = 0;
-    if (argc == optind)
-    {
-        temp[i] = mmalloc(char, sizeof("."));
-        temp[i++] = "."; 
-    }
+    temp[i] = NULL;
+    asprintf(&temp[i++],".");
+
     while (optind  < argc )
     {
         //check for sym link or executible.
-        if(is_regular_file(argv[optind]))
-        {
-            /*
-               lstat(argv[optind], stats);
-               if(flag.d)
-               {
-               fprintf(stdout, "%llu ",(stats->st_blocks));
-               }
-               fprintf(stdout, "%s", argv[optind]);
-               if (flag.c)
-               {
-               if ( S_ISDIR(stats->st_mode))
-               fprintf(stdout,"/");
-               else if (S_ISLNK(stats->st_mode)) 
-               fprintf(stdout, "@");
-               else if (stats->st_mode & S_IXUSR) 
-               fprintf(stdout, "*");
-               }
-               fprintf(stdout, "\n");a
-               */
-            ++optind;
+        /*
+           lstat(argv[optind], stats);
+           if(flag.d)
+           {
+           fprintf(stdout, "%llu ",(stats->st_blocks));
+           }
+           fprintf(stdout, "%s", argv[optind]);
+           if (flag.c)
+           {
+           if ( S_ISDIR(stats->st_mode))
+           fprintf(stdout,"/");
+           else if (S_ISLNK(stats->st_mode)) 
+           fprintf(stdout, "@");
+           else if (stats->st_mode & S_IXUSR) 
+           fprintf(stdout, "*");
+           }
+           fprintf(stdout, "\n");a
+           */
 
-        }
-        else{
-            temp[i] = mmalloc(char, sizeof(argv[optind]));
-            temp[i++] = argv[optind++];
-        }
+        fprintf(stderr,"%d", argc);
+        fprintf(stderr, "str:%s\n",argv[optind]);
+        temp[i] = NULL;
+        asprintf(&temp[i++], "%s",argv[optind++]);
     }
     temp[i] = NULL; 
     my_ls(temp);
