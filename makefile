@@ -1,6 +1,6 @@
 EXECUTABLES = myls
 
-CC = gcc
+CC = gcc -Wall -Werror  
 LIBS = libfdr.a
 CFLAGS = -O2
 
@@ -8,13 +8,11 @@ all: $(EXECUTABLES)
 
 .SUFFIXES: .c .o
 .c.o:
-	$(CC) $(CFLAGS) -Wall -Werror -c $*.c
+	$(CC) $(CFLAGS) -c $*.c
 
 clean:
 	rm -f *.o $(EXECUTABLES) *~
 test: all
 	#
-	./myls -d 40
-##
-	ls -s
-	#
+	./myls -r test test.tex .
+

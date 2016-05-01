@@ -133,7 +133,6 @@ void my_ls(char** argv)//assume that i only pass dirs
                         fprintf(stdout,"/");
                     else if (S_ISLNK(stats->st_mode)) 
                         fprintf(stdout, "@");
-
                     else if (stats->st_mode & S_IXUSR) 
                         fprintf(stdout, "*");
                 }
@@ -174,6 +173,7 @@ void my_ls(char** argv)//assume that i only pass dirs
                             fprintf(stdout, "%s:\n", tempstring);
                             recursive[0] = tempstring;
                             my_ls(recursive);
+                            free(recursive);
                         }
                     }                    
                 }
@@ -259,5 +259,6 @@ int main(int argc, char** argv)
     }
     my_ls(temp);
 
+    free(temp);
     exit(EXIT_SUCCESS);
 }
