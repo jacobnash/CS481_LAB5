@@ -19,16 +19,7 @@ struct flags {
     int r;
     int h;
 } flag;
-void my_ls_file(char *arg)
-{
-    fprintf(stdout, "%s\n", arg);
-}
-int is_regular_file(const char *path)
-{
-    struct stat path_stat;
-    stat(path, &path_stat);
-    return S_ISREG(path_stat.st_mode);
-}
+
 void convert(long long unsigned mem)
 {
     char* result = "B"; 
@@ -60,6 +51,60 @@ void convert(long long unsigned mem)
     }
     else
         fprintf(stdout, "%llu", mem);
+}
+
+void my_ls_file(char *arg)
+{
+    struct stat   *stats;
+    stats = mmalloc(struct stat, 1);
+         lstat(arg, stats);
+                if (flag.l)
+                {
+                    fprintf(stdout, "%llu ", stats->st_ino);//inode numbers
+                    fprintf(stdout, (S_ISDIR(stats->st_mode) ) ? "d" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IRUSR) ? "r" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IWUSR) ? "w" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IXUSR) ? "x" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IRGRP) ? "r" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IWGRP) ? "w" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IXGRP) ? "x" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IROTH) ? "r" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IWOTH) ? "w" : "-");
+                    fprintf(stdout, (stats->st_mode & S_IXOTH) ? "x " : "- ");
+                    fprintf(stdout, "%s ", getpwuid(stats->st_uid)->pw_name);
+                    fprintf(stdout, "%s ", getgrgid(stats->st_gid)->gr_name);
+                    if(flag.d)
+                    {
+                        convert(( ((stats->st_size / flag.d) + ((stats->st_size % flag.d) ? 1 : 0)) * flag.d));
+                    }
+                    else    
+                        convert(stats->st_size);
+                    char buf[20];
+                    time_t t_now;
+                    struct tm *l_time;
+                    time(&t_now);
+                    int year = localtime(&t_now)->tm_year; 
+                    l_time = localtime(&stats->st_mtime);
+                    (l_time->tm_year == year)? strftime(buf, 20, "%b %e %R", l_time) : strftime(buf, 20, "%b %e %Y", l_time);
+                    printf("%s ", buf);
+                }
+                fprintf(stdout, "%s", arg);
+                if (flag.c)
+                {
+                    if (S_ISLNK(stats->st_mode)) 
+                        fprintf(stdout, "@");
+
+                    else if (stats->st_mode & S_IXUSR) 
+                        fprintf(stdout, "*");
+                }
+                    fprintf(stdout, " -> %s", realpath(arg, NULL));
+                fprintf(stdout, "\n");
+}
+int is_regular_file(const char *path)
+{
+    struct stat path_stat;
+    stat(path, &path_stat);
+    return S_ISREG(path_stat.st_mode);
 }
 void usage()
 {
@@ -112,7 +157,12 @@ void my_ls(char** argv)//assume that i only pass dirs
                     fprintf(stdout, (stats->st_mode & S_IXOTH) ? "x " : "- ");
                     fprintf(stdout, "%s ", getpwuid(stats->st_uid)->pw_name);
                     fprintf(stdout, "%s ", getgrgid(stats->st_gid)->gr_name);
-                    convert(stats->st_size);
+                    if(flag.d)
+                    {
+                        convert(( ((stats->st_size / flag.d) + ((stats->st_size % flag.d) ? 1 : 0)) * flag.d));
+                    }
+                    else    
+                        convert(stats->st_size);
                     char buf[20];
                     time_t t_now;
                     struct tm *l_time;
@@ -121,10 +171,6 @@ void my_ls(char** argv)//assume that i only pass dirs
                     l_time = localtime(&stats->st_mtime);
                     (l_time->tm_year == year)? strftime(buf, 20, "%b %e %R", l_time) : strftime(buf, 20, "%b %e %Y", l_time);
                     printf("%s ", buf);
-                }
-                if(flag.d)
-                {
-                    convert(( ((stats->st_size / flag.d) + ((stats->st_size % flag.d) ? 1 : 0)) * flag.d));
                 }
                 fprintf(stdout, "%s", dirent_p->d_name);
                 if (flag.c)
@@ -137,26 +183,25 @@ void my_ls(char** argv)//assume that i only pass dirs
                     else if (stats->st_mode & S_IXUSR) 
                         fprintf(stdout, "*");
                 }
-                if(flag.f)
-                {
-                    if(S_ISLNK(stats->st_mode))
-                        fprintf(stdout, " -> %s", realpath(dirent_p->d_name, NULL));
-                }
+                if(S_ISLNK(stats->st_mode))
+                    fprintf(stdout, " -> %s", realpath(dirent_p->d_name, NULL));
                 fprintf(stdout, "\n");
             }
+            closedir(dir_p);
         }
-        else{
+        else
+        {
             fprintf(stderr, "\n FILE ERROR %s", *temp);
             perror("file does not exsist");
             exit(EXIT_FAILURE);
         }
-        closedir(dir_p);
         temp++;
     }
     temp = argv;
 
     if(flag.r)
     {
+        char** recursive = mmalloc(char*,2); 
         while(*temp)
         {
             if ((dir_p = opendir(*temp)) != NULL)
@@ -167,7 +212,6 @@ void my_ls(char** argv)//assume that i only pass dirs
                     {
                         if(!(strcmp(".",dirent_p->d_name)==0 || strcmp("..",dirent_p->d_name) == 0 ))
                         { 
-                            char** recursive = mmalloc(char*,2); 
                             recursive[1] = NULL;
                             char* tempstring = NULL;
                             asprintf(&tempstring,"%s/%s",*temp, dirent_p->d_name);
@@ -177,11 +221,13 @@ void my_ls(char** argv)//assume that i only pass dirs
                         }
                     }                    
                 }
+                closedir(dir_p);
             }
-
             ++temp;  
         }
+        free(recursive);
     }
+    free(stats);
 }
 
 
@@ -220,7 +266,6 @@ int main(int argc, char** argv)
                 ++flag.l;
                 break;
             case 'f':
-                //goto to dir
                 ++flag.f;
                 break;
             case 'h':
@@ -246,10 +291,12 @@ int main(int argc, char** argv)
         temp[i] = NULL;
         stat(argv[optind], stats);
         if(S_ISDIR(stats->st_mode)){
+               //if(S_ISLNK(stats->st_mode) && )
+               //     fprintf(stdout, " -> %s", realpath(dirent_p->d_name, NULL));
             temp[i] = malloc(sizeof(argv[optind])+1);
             strcpy(temp[i], argv[optind]);
             i++;
-        optind++;
+            optind++;
         }
         else
         {
@@ -258,6 +305,5 @@ int main(int argc, char** argv)
 
     }
     my_ls(temp);
-
-    exit(EXIT_SUCCESS);
+    return 0;
 }
