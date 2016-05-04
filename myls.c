@@ -20,6 +20,22 @@ struct flags {
     int h;
 } flag;
 
+void usage()
+{
+    fprintf(stderr, "\n usage: \n\tmyls [OPTIONS] ... [FILE] ...");
+    fprintf(stderr, "\n options:\n\t-c, -classify: append file type indicators: ’/’ for directories; ’@’ for symbolic links; ’*’ for executables.");
+    fprintf(stderr, "\n\t-d, –disk-usage: specify file size on disk, based on its number of allocated blocks. This option takes the file system block size (in bytes) as a mandatory parameter.");
+    fprintf(stderr, "\n\t-l, –long-listing: use detailed (long) listing format, printing in order:");
+    fprintf(stderr, "\n\t\t– inode number");
+    fprintf(stderr, "\n\t\t– mode (using the same “drwxrwxrwx” format of the standard ls command. – owner (you must convert the uid to the proper user name)");
+    fprintf(stderr, "\n\t\t– file modification time");
+    fprintf(stderr, "\n\t-f, –follow-symlinks: follow the targets of symbolic links 1");
+    fprintf(stderr, "\n\t-h, –human-readable: if long listing format is specified, print file sizes in a human readable format.");
+    fprintf(stderr, "\n\t-r, –recursive: list subdirectories recursively using depth-first, pre-order traversal.");
+    fprintf(stderr, "\n");
+    exit(0);
+}
+
 void convert(long long unsigned mem)
 {
     char* result = "B"; 
@@ -50,85 +66,61 @@ void convert(long long unsigned mem)
             fprintf(stdout, "%llu%s ",mem, result);
     }
     else
-        fprintf(stdout, "%llu", mem);
+        fprintf(stdout, "%llu ", mem);
 }
 
 void my_ls_file(char *arg)
 {
     struct stat   *stats;
     stats = mmalloc(struct stat, 1);
-         lstat(arg, stats);
-                if (flag.l)
-                {
-                    fprintf(stdout, "%llu ", stats->st_ino);//inode numbers
-                    fprintf(stdout, (S_ISDIR(stats->st_mode) ) ? "d" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IRUSR) ? "r" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IWUSR) ? "w" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IXUSR) ? "x" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IRGRP) ? "r" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IWGRP) ? "w" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IXGRP) ? "x" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IROTH) ? "r" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IWOTH) ? "w" : "-");
-                    fprintf(stdout, (stats->st_mode & S_IXOTH) ? "x " : "- ");
-                    fprintf(stdout, "%s ", getpwuid(stats->st_uid)->pw_name);
-                    fprintf(stdout, "%s ", getgrgid(stats->st_gid)->gr_name);
-                    if(flag.d)
-                    {
-                        convert(( ((stats->st_size / flag.d) + ((stats->st_size % flag.d) ? 1 : 0)) * flag.d));
-                    }
-                    else    
-                        convert(stats->st_size);
-                    char buf[20];
-                    time_t t_now;
-                    struct tm *l_time;
-                    time(&t_now);
-                    int year = localtime(&t_now)->tm_year; 
-                    l_time = localtime(&stats->st_mtime);
-                    (l_time->tm_year == year)? strftime(buf, 20, "%b %e %R", l_time) : strftime(buf, 20, "%b %e %Y", l_time);
-                    printf("%s ", buf);
-                }
-                fprintf(stdout, "%s", arg);
-                if (flag.c)
-                {
-                    if (S_ISLNK(stats->st_mode)) 
-                        fprintf(stdout, "@");
+    lstat(arg, stats);
+    if (flag.l)
+    {
+        fprintf(stdout, "%llu ", stats->st_ino);//inode numbers
+        fprintf(stdout, (S_ISDIR(stats->st_mode) ) ? "d" : "-");
+        fprintf(stdout, (stats->st_mode & S_IRUSR) ? "r" : "-");
+        fprintf(stdout, (stats->st_mode & S_IWUSR) ? "w" : "-");
+        fprintf(stdout, (stats->st_mode & S_IXUSR) ? "x" : "-");
+        fprintf(stdout, (stats->st_mode & S_IRGRP) ? "r" : "-");
+        fprintf(stdout, (stats->st_mode & S_IWGRP) ? "w" : "-");
+        fprintf(stdout, (stats->st_mode & S_IXGRP) ? "x" : "-");
+        fprintf(stdout, (stats->st_mode & S_IROTH) ? "r" : "-");
+        fprintf(stdout, (stats->st_mode & S_IWOTH) ? "w" : "-");
+        fprintf(stdout, (stats->st_mode & S_IXOTH) ? "x " : "- ");
+        fprintf(stdout, "%s ", getpwuid(stats->st_uid)->pw_name);
+        fprintf(stdout, "%s ", getgrgid(stats->st_gid)->gr_name);
+        if(flag.d)
+        {
+            convert(( ((stats->st_size / flag.d) + ((stats->st_size % flag.d) ? 1 : 0)) * flag.d));
+        }
+        else    
+            convert(stats->st_size);
+        char buf[20];
+        time_t t_now;
+        struct tm *l_time;
+        time(&t_now);
+        int year = localtime(&t_now)->tm_year; 
+        l_time = localtime(&stats->st_mtime);
+        (l_time->tm_year == year)? strftime(buf, 20, "%b %e %R", l_time) : strftime(buf, 20, "%b %e %Y", l_time);
+        printf("%s ", buf);
+    }
+    fprintf(stdout, "%s", arg);
+    if (flag.c)
+    {
+        if (S_ISLNK(stats->st_mode)) 
+            fprintf(stdout, "@");
 
-                    else if (stats->st_mode & S_IXUSR) 
-                        fprintf(stdout, "*");
-                }
-                    fprintf(stdout, " -> %s", realpath(arg, NULL));
-                fprintf(stdout, "\n");
-}
-int is_regular_file(const char *path)
-{
-    struct stat path_stat;
-    stat(path, &path_stat);
-    return S_ISREG(path_stat.st_mode);
-}
-void usage()
-{
-    fprintf(stderr, "\n usage: \n\tmyls [OPTIONS] ... [FILE] ...");
-    fprintf(stderr, "\n options:\n\t-c, -classify: append file type indicators: ’/’ for directories; ’@’ for symbolic links; ’*’ for executables.");
-    fprintf(stderr, "\n\t-d, –disk-usage: specify file size on disk, based on its number of allocated blocks. This option takes the file system block size (in bytes) as a mandatory parameter.");
-    fprintf(stderr, "\n\t-l, –long-listing: use detailed (long) listing format, printing in order:");
-    fprintf(stderr, "\n\t\t– inode number");
-    fprintf(stderr, "\n\t\t– mode (using the same “drwxrwxrwx” format of the standard ls command. – owner (you must convert the uid to the proper user name)");
-    fprintf(stderr, "\n\t\t– file modification time");
-    fprintf(stderr, "\n\t-f, –follow-symlinks: follow the targets of symbolic links 1");
-    fprintf(stderr, "\n\t-h, –human-readable: if long listing format is specified, print file sizes in a human readable format.");
-    fprintf(stderr, "\n\t-r, –recursive: list subdirectories recursively using depth-first, pre-order traversal.");
-    fprintf(stderr, "\n");
-    exit(0);
+        else if (stats->st_mode & S_IXUSR) 
+            fprintf(stdout, "*");
+    }
+    fprintf(stdout, "\n");
 }
 void my_ls(char** argv)//assume that i only pass dirs
 {
-
     struct dirent *dirent_p;
     DIR           *dir_p;
     struct stat   *stats;
     stats = mmalloc(struct stat, 1);
-
     //print out all the files
     char **temp = argv;
     //check if it is a directory
@@ -179,12 +171,9 @@ void my_ls(char** argv)//assume that i only pass dirs
                         fprintf(stdout,"/");
                     else if (S_ISLNK(stats->st_mode)) 
                         fprintf(stdout, "@");
-
                     else if (stats->st_mode & S_IXUSR) 
                         fprintf(stdout, "*");
                 }
-                if(S_ISLNK(stats->st_mode))
-                    fprintf(stdout, " -> %s", realpath(dirent_p->d_name, NULL));
                 fprintf(stdout, "\n");
             }
             closedir(dir_p);
@@ -197,10 +186,11 @@ void my_ls(char** argv)//assume that i only pass dirs
         }
         temp++;
     }
-    temp = argv;
+
 
     if(flag.r)
     {
+        temp = argv;
         char** recursive = mmalloc(char*,2); 
         while(*temp)
         {
@@ -227,7 +217,7 @@ void my_ls(char** argv)//assume that i only pass dirs
         }
         free(recursive);
     }
-    free(stats);
+    return;
 }
 
 
@@ -291,10 +281,15 @@ int main(int argc, char** argv)
         temp[i] = NULL;
         stat(argv[optind], stats);
         if(S_ISDIR(stats->st_mode)){
-               //if(S_ISLNK(stats->st_mode) && )
-               //     fprintf(stdout, " -> %s", realpath(dirent_p->d_name, NULL));
-            temp[i] = malloc(sizeof(argv[optind])+1);
-            strcpy(temp[i], argv[optind]);
+            if(S_ISLNK(stats->st_mode) && flag.f ){
+                temp[i] = malloc(sizeof(realpath(argv[optind],NULL))+1);
+                strcpy(temp[i],realpath(argv[optind],NULL));
+            }
+            else
+            {
+                temp[i] = malloc(sizeof(argv[optind])+1);
+                strcpy(temp[i], argv[optind]);
+            }
             i++;
             optind++;
         }
@@ -304,6 +299,7 @@ int main(int argc, char** argv)
         }
 
     }
+    temp[i] = NULL;
     my_ls(temp);
     return 0;
 }
