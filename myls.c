@@ -128,7 +128,6 @@ void my_ls(char** argv)//assume that i only pass dirs
 
     while(*temp)
     {
-        fprintf(stdout, "%s:\n", *temp);
         if((dir_p = opendir(*temp)) != NULL)
         {
             while((dirent_p =readdir(dir_p)) != NULL)
@@ -273,25 +272,30 @@ int main(int argc, char** argv)
     if (argc == option)  ++j;
     temp = mmalloc(char* , (argc - optind + j));
     int i = 0;
-    temp[i] = NULL;
     temp[argc - optind + 1] = NULL;
-    asprintf(&temp[i],".");
+    temp[i] = malloc(sizeof("."));
+    strcpy(temp[i], ".");
     while (optind  < argc )
     {
-        temp[i] = NULL;
         stat(argv[optind], stats);
         if(S_ISDIR(stats->st_mode)){
-            if(S_ISLNK(stats->st_mode) && flag.f ){
+            if(S_ISLNK(stats->st_mode) && flag.f){
                 temp[i] = malloc(sizeof(realpath(argv[optind],NULL))+1);
                 strcpy(temp[i],realpath(argv[optind],NULL));
+                i++;
+                optind++;
             }
+            else if(S_ISLNK(stats->st_mode) && !flag.f ){
+                my_ls_file(argv[optind++]);
+            }
+
             else
             {
                 temp[i] = malloc(sizeof(argv[optind])+1);
                 strcpy(temp[i], argv[optind]);
+                i++;
+                optind++;
             }
-            i++;
-            optind++;
         }
         else
         {
@@ -299,6 +303,7 @@ int main(int argc, char** argv)
         }
 
     }
+    if(!i) ++i;
     temp[i] = NULL;
     my_ls(temp);
     return 0;
