@@ -73,7 +73,13 @@ void my_ls_file(char *arg)
 {
     struct stat   *stats;
     stats = mmalloc(struct stat, 1);
-    lstat(arg, stats);
+    if((flag.f ? lstat(realpath(arg,NULL),stats) :lstat(arg, stats)) < 0)
+        {
+            fprintf(stderr, "\n FILE STAT ERROR %s\n", arg);
+            perror("file does not exsist");
+            exit(EXIT_FAILURE);
+        }
+
     if (flag.l)
     {
         fprintf(stdout, "%llu ", stats->st_ino);//inode numbers
@@ -120,6 +126,8 @@ void my_ls(char** argv)//assume that i only pass dirs
     struct dirent *dirent_p;
     DIR           *dir_p;
     struct stat   *stats;
+    struct stat   *lstats;
+    lstats = mmalloc(struct stat, 1);
     stats = mmalloc(struct stat, 1);
     //print out all the files
     char **temp = argv;
@@ -132,7 +140,7 @@ void my_ls(char** argv)//assume that i only pass dirs
         {
             while((dirent_p =readdir(dir_p)) != NULL)
             {
-                lstat(dirent_p->d_name, stats);
+                flag.f ? lstat(realpath(dirent_p->d_name,NULL),stats) : lstat(dirent_p->d_name, stats);
                 if (flag.l)
                 {
                     fprintf(stdout, "%llu ", dirent_p->d_ino);//inode numbers
@@ -168,9 +176,9 @@ void my_ls(char** argv)//assume that i only pass dirs
                 {
                     if (DT_DIR == dirent_p->d_type)
                         fprintf(stdout,"/");
-                    else if (S_ISLNK(stats->st_mode)) 
+                   else if (S_ISLNK(stats->st_mode)) 
                         fprintf(stdout, "@");
-                    else if (stats->st_mode & S_IXUSR) 
+                   else if (stats->st_mode & S_IXUSR) 
                         fprintf(stdout, "*");
                 }
                 fprintf(stdout, "\n");
@@ -197,8 +205,13 @@ void my_ls(char** argv)//assume that i only pass dirs
             {
                 while((dirent_p = readdir(dir_p)) != NULL)
                 {
-                    if(DT_DIR == dirent_p->d_type)
+                    lstat(dirent_p->d_name, lstats);
+                    if(DT_DIR == dirent_p->d_type  )
                     {
+                        if(S_ISLNK(lstats->st_mode) && !flag.f){
+                            ++temp;
+                            continue;
+                        }
                         if(!(strcmp(".",dirent_p->d_name)==0 || strcmp("..",dirent_p->d_name) == 0 ))
                         { 
                             recursive[1] = NULL;
@@ -223,7 +236,9 @@ void my_ls(char** argv)//assume that i only pass dirs
 int main(int argc, char** argv)
 {
     struct stat   *stats;
+    struct stat   *lstats;
     stats = mmalloc(struct stat, 1);
+    lstats = mmalloc(struct stat, 1);
     int option = 0;
     int index = 0; 
     flag.c = 0;
@@ -272,39 +287,41 @@ int main(int argc, char** argv)
     if (argc == option)  ++j;
     temp = mmalloc(char* , (argc - optind + j));
     int i = 0;
+    int N = 0;
     temp[argc - optind + 1] = NULL;
-    temp[i] = malloc(sizeof("."));
-    strcpy(temp[i], ".");
+    temp[argc - optind + 1] = NULL;
     while (optind  < argc )
     {
         stat(argv[optind], stats);
+        lstat(argv[optind], lstats);
         if(S_ISDIR(stats->st_mode)){
-            if(S_ISLNK(stats->st_mode) && flag.f){
-                temp[i] = malloc(sizeof(realpath(argv[optind],NULL))+1);
-                strcpy(temp[i],realpath(argv[optind],NULL));
-                i++;
-                optind++;
-            }
-            else if(S_ISLNK(stats->st_mode) && !flag.f ){
-                my_ls_file(argv[optind++]);
-            }
-
-            else
             {
+                if(!flag.f && S_ISLNK(lstats->st_mode)){
+                   my_ls_file(argv[optind++]);
+                       ++N;
+                }
+                else{
                 temp[i] = malloc(sizeof(argv[optind])+1);
                 strcpy(temp[i], argv[optind]);
                 i++;
                 optind++;
+                }
             }
         }
         else
         {
             my_ls_file(argv[optind++]);
+                       ++N;
         }
 
     }
-    if(!i) ++i;
-    temp[i] = NULL;
+    temp[i && (argc == optind)] = NULL;
+    if(!i && !N)
+    {
+    temp[0] = malloc(sizeof("."));
+    strcpy(temp[0], ".");
+    temp[1] = NULL;
+    }
     my_ls(temp);
     return 0;
 }

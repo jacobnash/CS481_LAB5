@@ -14,5 +14,5 @@ clean:
 	rm -f *.o $(EXECUTABLES) *~
 test: all
 	#
-	./myls  notes
+	./myls -lf text.txt
 
