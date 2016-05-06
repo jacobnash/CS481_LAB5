@@ -1,14 +1,13 @@
 EXECUTABLES = myls
 
-CC = gcc -Wall -Werror -std=gnu99 
-LIBS = libfdr.a
-CFLAGS = -O2
+CC = gcc -std=gnu99 
+CFLAGS = -O2 
 
 all: $(EXECUTABLES)
 
 .SUFFIXES: .c .o
 .c.o:
-	$(CC) $(CFLAGS) -c $*.c
+	$(CC) $(CFLAGS)  -o $*.c -lm
 
 clean:
 	rm -f *.o $(EXECUTABLES) *~

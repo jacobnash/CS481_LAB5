@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -45,21 +46,21 @@ void convert(long long unsigned mem)
         {
             i_r = (float)mem/0x80000000;
             result = "G";
-            i_r = floorf(i_r * 100) / 100;
+            i_r = floor(i_r * 100) / 100;
             fprintf(stdout, "%3.1f%s ",i_r, result);
         }
         else if (mem > 0x100000)
         {
             i_r = (float)mem/0x100000;
             result = "M";
-            i_r = floorf(i_r * 100) / 100;
+            i_r = floor(i_r * 100) / 100;
             fprintf(stdout, "%3.1f%s ",i_r, result);
         }
         else if (mem > 0x800)
         {
             i_r = (float)mem/0x800;
             result = "K";
-            i_r = floorf(i_r * 100) / 100;
+            i_r = floor(i_r * 100) / 100;
             fprintf(stdout, "%3.1f%s ",i_r, result);
         }
         else
@@ -81,7 +82,7 @@ void my_ls_file(char *arg)
 
     if (flag.l)
     {
-        fprintf(stdout, "%llu ", stats->st_ino);//inode numbers
+        fprintf(stdout, "%llu ", (long long unsigned)stats->st_ino);//inode numbers
         fprintf(stdout, (S_ISDIR(stats->st_mode) ) ? "d" : "-");
         fprintf(stdout, (stats->st_mode & S_IRUSR) ? "r" : "-");
         fprintf(stdout, (stats->st_mode & S_IWUSR) ? "w" : "-");
@@ -142,7 +143,7 @@ void my_ls(char** argv)//assume that i only pass dirs
                 flag.f ? lstat(realpath(dirent_p->d_name,NULL),stats) : lstat(dirent_p->d_name, stats);
                 if (flag.l)
                 {
-                    fprintf(stdout, "%llu ", dirent_p->d_ino);//inode numbers
+                    fprintf(stdout, "%llu ", (long long unsigned)dirent_p->d_ino);//inode numbers
                     fprintf(stdout, (S_ISDIR(stats->st_mode) ) ? "d" : "-");
                     fprintf(stdout, (stats->st_mode & S_IRUSR) ? "r" : "-");
                     fprintf(stdout, (stats->st_mode & S_IWUSR) ? "w" : "-");
