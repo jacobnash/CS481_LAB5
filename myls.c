@@ -75,7 +75,6 @@ void my_ls_file(char *arg)
     stats = mmalloc(struct stat, 1);
     if((flag.f ? lstat(realpath(arg,NULL),stats) :lstat(arg, stats)) < 0)
         {
-            fprintf(stderr, "\n FILE STAT ERROR %s\n", arg);
             perror("file does not exsist");
             exit(EXIT_FAILURE);
         }
@@ -187,7 +186,6 @@ void my_ls(char** argv)//assume that i only pass dirs
         }
         else
         {
-            fprintf(stderr, "\n FILE ERROR %s", *temp);
             perror("file does not exsist");
             exit(EXIT_FAILURE);
         }

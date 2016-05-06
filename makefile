@@ -1,6 +1,6 @@
 EXECUTABLES = myls
 
-CC = gcc -Wall -Werror  
+CC = gcc -Wall -Werror -std=gnu99 
 LIBS = libfdr.a
 CFLAGS = -O2
 
